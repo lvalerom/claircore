@@ -205,21 +205,26 @@ func (r *RepositoryScanner) Scan(ctx context.Context, l *claircore.Layer) ([]*cl
 		return nil, fmt.Errorf("rhel: unable to get content manifest: %w", err)
 	}
 	useDNFData = man == nil || man.FromDNFHint
+	zlog.Info(ctx).Msgf("lvm --> use dnf %t", useDNFData)
 
 	tctx, done := context.WithTimeout(ctx, r.cfg.Timeout)
 	defer done()
 	cmi, err := r.upd.Get(tctx, r.client)
 	if err != nil && cmi == nil {
+		zlog.Info(ctx).Msg("lvm --> unable to call to get mapping file")
 		return []*claircore.Repository{}, err
 	}
 	cm, ok := cmi.(*mappingFile)
 	if !ok || cm == nil {
+		zlog.Info(ctx).Msg("lvm --> missing mapping file")
 		return []*claircore.Repository{}, fmt.Errorf("rhel: unable to create a mappingFile object")
 	}
 
 	var repoids []string
 	if useDNFData {
+		zlog.Info(ctx).Msg("lvm --> calling dnf find repo ids")
 		repoids, err = dnf.FindRepoids(ctx, sys)
+		zlog.Info(ctx).Msgf("lvm --> repo ids len: %d err: %v", len(repoids), err)
 	} else {
 		repoids, err = repoidsFromContentSets(ctx, sys)
 	}
@@ -233,6 +238,7 @@ func (r *RepositoryScanner) Scan(ctx context.Context, l *claircore.Layer) ([]*cl
 		for _, repoid := range repoids {
 			cpes, ok := cm.GetOne(ctx, repoid)
 			if !ok {
+				zlog.Info(ctx).Msgf("lvm --> cannot find cpe for repo id %s", repoid)
 				continue
 			}
 			found = true
@@ -243,10 +249,12 @@ func (r *RepositoryScanner) Scan(ctx context.Context, l *claircore.Layer) ([]*cl
 			}
 		}
 		if found {
+			zlog.Info(ctx).Msg("lvm --> found some cpe")
 			return
 		}
 
 		if r.apiFetcher != nil {
+			zlog.Info(ctx).Msg("lvm --> using api fetcher")
 			// Embedded content-sets are unavailable in very old images.
 			// For these, use fallback option and query Red Hat Container API.
 			ctx, done := context.WithTimeout(ctx, r.cfg.Timeout)
