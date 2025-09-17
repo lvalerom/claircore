@@ -8,7 +8,7 @@ FROM
 		FROM
 			trans_item
 		WHERE
-			action <> ?
+			action <> 8
 		GROUP BY
 			item_id
 		) ON (uniq = trans_item.id)

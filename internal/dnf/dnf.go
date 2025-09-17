@@ -71,11 +71,13 @@ func FindRepoids(ctx context.Context, sys fs.FS) ([]string, error) {
 		return nil, err
 	}
 	if h == nil {
+		zlog.Info(ctx).Msg("open history returned nil")
 		return nil, nil
 	}
 	defer h.Close()
 
 	var ret []string
+	zlog.Info(ctx).Msgf("query %q enum %d", allRepoids, h.rm)
 	rows, err := h.db.QueryContext(ctx, allRepoids, h.rm)
 	if err != nil {
 		return nil, err
@@ -86,11 +88,13 @@ func FindRepoids(ctx context.Context, sys fs.FS) ([]string, error) {
 		}
 	}()
 
+	zlog.Info(ctx).Msg("iterating through rows")
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("internal/dnf: error scanning repoid: %w", err)
 		}
+		zlog.Info(ctx).Msgf("row id %q", id)
 		ret = append(ret, id)
 	}
 	if err := rows.Err(); err != nil {
