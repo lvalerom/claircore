@@ -6,6 +6,7 @@ import (
 
 	"github.com/quay/claircore"
 	"github.com/quay/claircore/indexer"
+	"github.com/quay/zlog"
 )
 
 // Coalescer takes individual layer artifacts and coalesces them into a full
@@ -35,6 +36,9 @@ func (*Coalescer) Coalesce(ctx context.Context, artifacts []*indexer.LayerArtifa
 		Repositories:  map[string]*claircore.Repository{},
 	}
 
+	zlog.Info(ctx).
+		Msgf("artifacts before first filter: %+v", artifacts)
+
 	// User layers built on top of Red Hat images don't have product CPEs associated with them.
 	// We need to share the product information forward to all layers where it's missing.
 	// This only applies to Red Hat images, obviously.
@@ -47,6 +51,8 @@ func (*Coalescer) Coalesce(ctx context.Context, artifacts []*indexer.LayerArtifa
 		}
 		artifacts[i].Repos = append(artifacts[i].Repos, prev...)
 	}
+	zlog.Info(ctx).
+		Msgf("artifacts after first filter: %+v", artifacts)
 	// The same thing has to be done in reverse, because the first layer(s) are missing
 	// the relevant information.
 	//
@@ -61,6 +67,8 @@ func (*Coalescer) Coalesce(ctx context.Context, artifacts []*indexer.LayerArtifa
 		}
 		artifacts[i].Repos = append(artifacts[i].Repos, prev...)
 	}
+	zlog.Info(ctx).
+		Msgf("artifacts after second filter: %+v", artifacts)
 	// This dance with copying the product information in both directions means
 	// that if Red Hat product information is found, it "taints" all the layers.
 
@@ -105,6 +113,10 @@ func (*Coalescer) Coalesce(ctx context.Context, artifacts []*indexer.LayerArtifa
 		}
 		// associate packages with their environments
 		for _, pkg := range layerArtifacts.Pkgs {
+			zlog.Info(ctx).
+				Msgf("package %q repository hint: %+v", pkg.Name, pkg.RepositoryHint)
+
+
 			// if we encounter a package where we haven't recorded a package database,
 			// initialize the package database
 			var distID string
